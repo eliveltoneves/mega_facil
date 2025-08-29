@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/register_page.dart';
 import '../features/auth/terms_page.dart';
+import '../features/bet/new_bet_page.dart';
+import '../features/bet/repeat_bet_page.dart';
+import '../features/dashboard/dashboard_page.dart';
 import '../features/profile/profile_page.dart';
 import '../core/auth_notifier.dart'; // <-- o arquivo acima
 
@@ -28,7 +31,7 @@ class AppRouter {
 
       if (!loggedIn && !loggingIn) return '/login';
       if (loggedIn && (location == '/login' || location == '/register')) {
-        return '/perfil';
+        return '/dashboard';
       }
       return null;
     },
@@ -37,6 +40,9 @@ class AppRouter {
       GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
       GoRoute(path: '/termos', builder: (c, s) => const TermsPage()),
       GoRoute(path: '/perfil', builder: (c, s) => const ProfilePage()),
+      GoRoute(path: '/dashboard', builder: (c, s) => const DashboardPage()),
+      GoRoute(path: '/nova-aposta', builder: (c, s) => const NewBetPage()),
+      GoRoute(path: '/repetir-aposta', builder: (c, s) => const RepeatBetPage()),
     ],
   );
 }
