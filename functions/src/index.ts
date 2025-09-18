@@ -12,6 +12,7 @@ const fx = functions.region('southamerica-east1');
 function cents(n: number) { return Math.round(n); }
 function uniq<T>(a: T[]) { return Array.from(new Set(a)); }
 
+// --- Enforce: janela, limite, números válidos e unicidade (hash25) por user/concurso
 export const onBetCreateEnforceLimit = fx.firestore
   .document('contests/{contestId}/bets/{betId}')
   .onCreate(async (snap, ctx) => {
@@ -19,36 +20,48 @@ export const onBetCreateEnforceLimit = fx.firestore
     const { contestId } = ctx.params;
     const uid = bet.userId as string;
 
+    // valida concurso
     const contestRef = db.collection('contests').doc(contestId);
     const contestSnap = await contestRef.get();
     const contest = contestSnap.data() as any;
-    if (!contest) {
-      await snap.ref.delete();
-      return;
-    }
+    if (!contest) { await snap.ref.delete(); return; }
 
     const fechamento = (contest.fechamento as admin.firestore.Timestamp).toDate();
     if (new Date() >= fechamento || contest.status !== 'open') {
-      await snap.ref.delete();
-      return;
+      await snap.ref.delete(); return;
     }
 
-    // limite 5 apostas por user
-    const q = await contestRef.collection('bets').where('userId', '==', uid).get();
-    if (q.size > 5) {
-      await snap.ref.delete();
-      return;
-    }
+    // limite 5 por user
+    const q = await contestRef.collection('bets')
+      .where('userId', '==', uid).get();
+    if (q.size > 5) { await snap.ref.delete(); return; }
 
-    // validação dos 25 números
+    // validação 25 números
     const nums: number[] = (bet.numeros || []).map((x: any) => Number(x));
-    const valid = nums.length === 25 && uniq(nums).length === 25 && nums.every(n => n >= 1 && n <= 60);
-    if (!valid) {
-      await snap.ref.delete();
-      return;
+    const valid = nums.length === 25
+      && uniq(nums).length === 25
+      && nums.every(n => n >= 1 && n <= 60);
+    if (!valid) { await snap.ref.delete(); return; }
+
+    // unicidade por user/concurso: hash25 = números ordenados e join(',')
+    const sorted = [...nums].sort((a, b) => a - b);
+    const hash25 = sorted.join(',');
+
+    // se já existe outra aposta desse usuário com o mesmo hash25, apaga a nova
+    const dupe = await contestRef.collection('bets')
+      .where('userId', '==', uid)
+      .where('hash25', '==', hash25)
+      .limit(1)
+      .get();
+    if (!dupe.empty) { await snap.ref.delete(); return; }
+
+    // grava o hash na aposta (caso o cliente não tenha enviado)
+    if (!bet.hash25) {
+      await snap.ref.set({ hash25 }, { merge: true });
     }
   });
 
+// agrega quantidade paid/validated em contests/{id}.meta.totalBetsPaid
 export const onBetWriteAggregate = fx.firestore
   .document('contests/{contestId}/bets/{betId}')
   .onWrite(async (_change, ctx) => {
@@ -59,6 +72,7 @@ export const onBetWriteAggregate = fx.firestore
     await contestRef.set({ meta: { totalBetsPaid: paidSnap.size } }, { merge: true });
   });
 
+// callable de apuração (mantida como estava)
 export const settleContest = fx.https.onCall(async (data, context) => {
   if (!(context.auth?.token?.admin === true)) {
     throw new functions.https.HttpsError('permission-denied', 'Somente admin.');
@@ -93,11 +107,14 @@ export const settleContest = fx.https.onCall(async (data, context) => {
 
   const preco = Number(contest.precoApostaCentavos ?? 2000);
   const arrec = paid.size * preco;
-  const rateios = contest.rateios ?? { principal: 0.70, peFrio: 0.05, especial: 0.05, taxa: 0.20 };
 
-  const principalPool = cents(arrec * rateios.principal) + Number(contest.acumuladoPrincipalCentavos ?? 0);
-  const peFrioPool    = cents(arrec * rateios.peFrio);
-  const especialPool  = cents(arrec * rateios.especial) + Number(contest.acumuladoEspecialCentavos ?? 0);
+  // Mantém taxa 20% fora (80% para prêmios), depois reparte 70/5/5 como você definiu
+  const pool80 = cents(arrec * 0.80);
+  const rateios = { principal: 0.70, peFrio: 0.05, especial: 0.05, taxa: 0.20 };
+
+  const principalPool = cents(pool80 * rateios.principal) + Number(contest.acumuladoPrincipalCentavos ?? 0);
+  const peFrioPool    = cents(pool80 * rateios.peFrio);
+  const especialPool  = cents(pool80 * rateios.especial) + Number(contest.acumuladoEspecialCentavos ?? 0);
 
   const winners6: FirebaseFirestore.QueryDocumentSnapshot[] = [];
   const winners0: FirebaseFirestore.QueryDocumentSnapshot[] = [];
@@ -189,9 +206,9 @@ export const settleContest = fx.https.onCall(async (data, context) => {
 });
 
 // --- ADMIN: tornar usuário admin (ad-hoc) ---
-// Somente estes usuários podem conceder a flag admin via callable
+// Preencha seu UID abaixo (quem pode conceder admin)
 const ALLOWED_GRANTERS = new Set<string>([
-  '', // seu UID
+  // 'XGJbtD5FDeNUwzg4m2q4rgSXddO2',
 ]);
 
 export const makeAdmin = fx.https.onCall(async (data, context) => {
@@ -206,5 +223,3 @@ export const makeAdmin = fx.https.onCall(async (data, context) => {
   await admin.auth().setCustomUserClaims(uid, { admin: true });
   return { ok: true };
 });
-
-
