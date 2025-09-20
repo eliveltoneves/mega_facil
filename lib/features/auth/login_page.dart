@@ -35,24 +35,29 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   const MFLogo(height: 70),
                   const SizedBox(height: 16),
-                  Text('Bem-vindo ao Mega Fácil', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Bem-vindo ao Mega Fácil',
+                      style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
-                  Text('18+ | Aposte com responsabilidade.', style: Theme.of(context).textTheme.bodySmall),
+                  Text('18+ | Aposte com responsabilidade.',
+                      style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 16),
-                  if (_error != null) Text(_error!, style: TextStyle(color: cs.error)),
+                  if (_error != null)
+                    Text(_error!, style: TextStyle(color: cs.error)),
                   Form(
                     key: _form,
                     child: Column(
                       children: [
                         TextFormField(
                           controller: _email,
-                          decoration: const InputDecoration(labelText: 'E-mail'),
+                          decoration:
+                          const InputDecoration(labelText: 'E-mail'),
                           validator: Validators.email,
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: _pass,
-                          decoration: const InputDecoration(labelText: 'Senha'),
+                          decoration:
+                          const InputDecoration(labelText: 'Senha'),
                           obscureText: true,
                           validator: Validators.password,
                         ),
@@ -69,17 +74,21 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: () async {
                                 if (Validators.email(_email.text) == null) {
                                   await _auth.sendPasswordReset(_email.text);
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('E-mail de recuperação enviado.')),
-                                    );
-                                  }
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'E-mail de recuperação enviado.'),
+                                    ),
+                                  );
                                 } else {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Informe um e-mail válido para recuperar a senha.')),
-                                    );
-                                  }
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Informe um e-mail válido para recuperar a senha.'),
+                                    ),
+                                  );
                                 }
                               },
                               child: const Text('Esqueci minha senha'),
@@ -93,17 +102,27 @@ class _LoginPageState extends State<LoginPage> {
                             onPressed: _loading
                                 ? null
                                 : () async {
-                              if (!_form.currentState!.validate()) return;
-                              setState(() { _loading = true; _error = null; });
+                              if (!_form.currentState!.validate()) {
+                                return;
+                              }
+                              setState(() {
+                                _loading = true;
+                                _error = null;
+                              });
                               try {
-                                await _auth.signIn(_email.text, _pass.text);
+                                await _auth.signIn(
+                                    _email.text, _pass.text);
+                                // redirecionamento é feito pelo GoRouter via redirect()
                               } on FirebaseAuthException catch (e) {
-                                setState(() => _error = e.message ?? 'Falha ao entrar');
+                                setState(() => _error =
+                                    e.message ?? 'Falha ao entrar');
                               } finally {
-                                if (mounted) setState(() => _loading = false);
+                                if (!mounted) return;
+                                setState(() => _loading = false);
                               }
                             },
-                            child: Text(_loading ? 'Entrando...' : 'Entrar'),
+                            child:
+                            Text(_loading ? 'Entrando...' : 'Entrar'),
                           ),
                         ),
                         const SizedBox(height: 8),

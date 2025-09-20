@@ -15,7 +15,8 @@ import '../features/bet/repeat_bet_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/dev/make_admin_page.dart';
 import '../features/profile/profile_page.dart';
-import '../core/auth_notifier.dart'; // <-- o arquivo acima
+import '../features/auth/forgot_password_page.dart';
+import '../core/auth_notifier.dart';
 
 class AppRouter {
   static final _auth = FirebaseAuth.instance;
@@ -59,6 +60,7 @@ class AppRouter {
       GoRoute(path: '/dev/make-admin', builder: (c, s) => const MakeAdminPage()),
       GoRoute(path: '/login', builder: (c, s) => const LoginPage()),
       GoRoute(path: '/register', builder: (c, s) => const RegisterPage()),
+      GoRoute(path: '/esqueci-senha', builder: (c, s) => const ForgotPasswordPage()),
       GoRoute(path: '/termos', builder: (c, s) => const TermsPage()),
       GoRoute(path: '/perfil', builder: (c, s) => const ProfilePage()),
       GoRoute(path: '/dashboard', builder: (c, s) => const DashboardPage()),
